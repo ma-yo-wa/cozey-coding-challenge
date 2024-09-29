@@ -8,13 +8,13 @@ import {
   Loader,
 } from "./styles";
 import axios from "axios";
-import { ConfigSelectionData, FetchDataResponse, handleconfig } from "./types";
+import { handleconfig } from "./types";
 import { useCartMutation } from "../hooks/useCartMutation";
 import ColorSelector from "../Common/ColorSelector";
 import { calculateCozeyCarePrice } from "../helpers/calculateCozeyCarePrice";
+import { useSeatingConfiguratorState } from "../hooks/useSeatingConfiguratorState";
 
 export const SeatingConfigurator = ({
-  collectionTitle,
   seating,
   config,
   price,
@@ -22,40 +22,22 @@ export const SeatingConfigurator = ({
   configId,
 }: any) => {
   const router = useRouter();
-  const [isPopupOpen, setIsPopupOpen] = useState(false);
-  const [configSelected, setConfigSelected] = useState<ConfigSelectionData>(
-    {} as ConfigSelectionData
-  );
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [additionalConfig, setAdditionalConfig] =
-    useState<FetchDataResponse | null>(null);
+
+  const {
+    configSelected,
+    setConfigSelected,
+    errorMessage,
+    setErrorMessage,
+    additionalConfig,
+    fetchAdditionalConfig,
+    isLoading,
+  } = useSeatingConfiguratorState(configId, seating);
+
+  useEffect(() => {
+    fetchAdditionalConfig();
+  }, [fetchAdditionalConfig]);
 
   const { addToCart } = useCartMutation();
-
-  const [counter, setCounter] = useState(0);
-
-  useEffect(() => {
-    const fetchAdditionalConfig = async () => {
-      setIsLoading(true);
-      const response = await axios.get<FetchDataResponse>(
-        /api/configuration/${configId}
-      );
-      setAdditionalConfig(response.data);
-      setIsLoading(false);
-    };
-
-    fetchAdditionalConfig();
-  }, []);
-
-  useEffect(() => {
-    if (seating) {
-      setConfigSelected({
-        color: seating.option1OptionsCollection[0]?.value,
-        seating: seating.sofa.option2OptionsCollection[0],
-      });
-    }
-  }, [seating]);
 
   const handleConfig = ({ color, seating }: handleconfig) => {
     setConfigSelected((oldSelected) => ({
@@ -99,7 +81,7 @@ export const SeatingConfigurator = ({
       ) : additionalConfig ? (
         <>
           <ColorSelector
-            selectedColor={configSelected.color}
+            selectedColor={configSelected.color || ""}
             setColor={(color) =>
               handleConfig({
                 color: color.value,
@@ -110,10 +92,8 @@ export const SeatingConfigurator = ({
           <div>
             <label>Select Seating Option</label>
             <select
-              value={configSelected.seating?.value || ""}
-              onChange={(e) =>
-                handleConfig({ seating: { value: e.target.value } })
-              }
+              value={configSelected.seating || ""}
+              onChange={(e) => handleConfig({ seating: e.target.value })}
             >
               {additionalConfig.seatingOptions.map((option) => (
                 <div key={option.value}>
