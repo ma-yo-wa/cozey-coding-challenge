@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import {
   SeatingWrapper,
   AddToCartButton,
@@ -7,12 +7,11 @@ import {
   ErrorMessage,
   Loader,
 } from "./styles";
-import axios from "axios";
 import { handleconfig } from "./types";
-import { useCartMutation } from "../hooks/useCartMutation";
 import ColorSelector from "../Common/ColorSelector";
 import { calculateCozeyCarePrice } from "../helpers/calculateCozeyCarePrice";
 import { useSeatingConfiguratorState } from "../hooks/useSeatingConfiguratorState";
+import { useAddToCart } from "../hooks/useAddToCart";
 
 export const SeatingConfigurator = ({
   seating,
@@ -33,11 +32,12 @@ export const SeatingConfigurator = ({
     isLoading,
   } = useSeatingConfiguratorState(configId, seating);
 
+  const { addToCart, isAddingToCart, error: cartError, setError: setCartError } = useAddToCart();
+
   useEffect(() => {
     fetchAdditionalConfig();
   }, [fetchAdditionalConfig]);
 
-  const { addToCart } = useCartMutation();
 
   const handleConfig = ({ color, seating }: handleconfig) => {
     setConfigSelected((oldSelected) => ({
@@ -52,12 +52,6 @@ export const SeatingConfigurator = ({
   }, [price, config]);
 
   const handleAddToCart = () => {
-    if (!configSelected.color || !configSelected.seating) {
-      setErrorMessage("Please select both a color and a seating option");
-      return;
-    }
-    setErrorMessage(null);
-
     addToCart({
       quantity: 1,
       variantId: configId,
@@ -65,13 +59,7 @@ export const SeatingConfigurator = ({
         color: configSelected.color,
         seating: configSelected.seating,
       },
-    })
-      .then(() => {
-        router.push("/cart");
-      })
-      .catch(() => {
-        setErrorMessage("Failed to add item to cart");
-      });
+    });
   };
 
   return (
