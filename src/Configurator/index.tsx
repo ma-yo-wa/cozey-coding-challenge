@@ -8,7 +8,7 @@ import {
   Loader,
 } from "./styles";
 import { handleconfig } from "./types";
-import ColorSelector from "../Common/ColorSelector";
+import ConfigSelector from "../Common/ConfigSelector";
 import { calculateCozeyCarePrice } from "../helpers/calculateCozeyCarePrice";
 import { useSeatingConfiguratorState } from "../hooks/useSeatingConfiguratorState";
 import { useAddToCart } from "../hooks/useAddToCart";
@@ -42,11 +42,10 @@ export const SeatingConfigurator = ({
     fetchAdditionalConfig();
   }, [fetchAdditionalConfig]);
 
-  const handleConfig = ({ color, seating }: handleconfig) => {
-    setConfigSelected((oldSelected) => ({
-      ...oldSelected,
-      color: color || oldSelected.color,
-      seating: seating || oldSelected.seating,
+  const handleConfig = (configType: 'color' | 'seating', value: string) => {
+    setConfigSelected((prev) => ({
+      ...prev,
+      [configType]: value,
     }));
   };
 
@@ -71,24 +70,18 @@ export const SeatingConfigurator = ({
 
   return (
     <SeatingWrapper>
-      <ColorSelector
-        selectedColor={configSelected.color || ""}
-        setColor={(color) => handleConfig({ color: color.value })}
-        colors={colorsData}
+      <ConfigSelector
+        label="Select Color"
+        selectedValue={configSelected.color}
+        onChange={(value) => handleConfig('color', value)}
+        options={colorsData}
       />
-      <div>
-        <label>Select Seating Option</label>
-        <select
-          value={configSelected.seating || ""}
-          onChange={(e) => handleConfig({ seating: e.target.value })}
-        >
-          {additionalConfig.seatingOptions.map((option) => (
-            <div key={option.value}>
-              <option value={option.value}>{option.title}</option>
-            </div>
-          ))}
-        </select>
-      </div>
+      <ConfigSelector
+        label="Select Seating Option"
+        selectedValue={configSelected.seating}
+        onChange={(value) => handleConfig('seating', value)}
+        options={additionalConfig.seatingOptions}
+      />
       {cartError && <ErrorMessage>{cartError}</ErrorMessage>}
       <AddToCartContainer>
         <AddToCartButton
