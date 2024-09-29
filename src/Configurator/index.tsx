@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   SeatingWrapper,
   AddToCartButton,
@@ -8,11 +8,10 @@ import {
   Loader,
 } from "./styles";
 import axios from "axios";
-import { Collection } from "../Common/Collection";
 import { ConfigSelectionData, FetchDataResponse, handleconfig } from "./types";
 import { useCartMutation } from "../hooks/useCartMutation";
+import ColorSelector from "../Common/ColorSelector";
 import { calculateCozeyCarePrice } from "../helpers/calculateCozeyCarePrice";
-import React from "react";
 
 export const SeatingConfigurator = ({
   collectionTitle,
