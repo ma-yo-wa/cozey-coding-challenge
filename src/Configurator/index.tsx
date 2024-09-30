@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import {
   SeatingWrapper,
   AddToCartButton,
@@ -7,15 +7,13 @@ import {
   ErrorMessage,
   Loader,
 } from "./styles";
-import axios from "axios";
-import { Collection } from "../Common/Collection";
-import { ConfigSelectionData, FetchDataResponse, handleconfig } from "./types";
-import { useCartMutation } from "../hooks/useCartMutation";
+import { handleconfig } from "./types";
+import ConfigSelector from "../Common/ConfigSelector";
 import { calculateCozeyCarePrice } from "../helpers/calculateCozeyCarePrice";
-import React from "react";
+import { useSeatingConfiguratorState } from "../hooks/useSeatingConfiguratorState";
+import { useAddToCart } from "../hooks/useAddToCart";
 
 export const SeatingConfigurator = ({
-  collectionTitle,
   seating,
   config,
   price,
@@ -23,46 +21,31 @@ export const SeatingConfigurator = ({
   configId,
 }: any) => {
   const router = useRouter();
-  const [isPopupOpen, setIsPopupOpen] = useState(false);
-  const [configSelected, setConfigSelected] = useState<ConfigSelectionData>(
-    {} as ConfigSelectionData
-  );
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [additionalConfig, setAdditionalConfig] =
-    useState<FetchDataResponse | null>(null);
 
-  const { addToCart } = useCartMutation();
+  const {
+    configSelected,
+    setConfigSelected,
+    errorMessage,
+    setErrorMessage,
+    additionalConfig,
+    fetchAdditionalConfig,
+    isLoading,
+  } = useSeatingConfiguratorState(configId, seating);
 
-  const [counter, setCounter] = useState(0);
+  const {
+    addToCart,
+    isAddingToCart,
+    error: cartError,
+  } = useAddToCart();
 
   useEffect(() => {
-    const fetchAdditionalConfig = async () => {
-      setIsLoading(true);
-      const response = await axios.get<FetchDataResponse>(
-        /api/configuration/${configId}
-      );
-      setAdditionalConfig(response.data);
-      setIsLoading(false);
-    };
-
     fetchAdditionalConfig();
-  }, []);
+  }, [fetchAdditionalConfig]);
 
-  useEffect(() => {
-    if (seating) {
-      setConfigSelected({
-        color: seating.option1OptionsCollection[0]?.value,
-        seating: seating.sofa.option2OptionsCollection[0],
-      });
-    }
-  }, [seating]);
-
-  const handleConfig = ({ color, seating }: handleconfig) => {
-    setConfigSelected((oldSelected) => ({
-      ...oldSelected,
-      color: color || oldSelected.color,
-      seating: seating || oldSelected.seating,
+  const handleConfig = (configType: 'color' | 'seating', value: string) => {
+    setConfigSelected((prev) => ({
+      ...prev,
+      [configType]: value,
     }));
   };
 
@@ -71,12 +54,6 @@ export const SeatingConfigurator = ({
   }, [price, config]);
 
   const handleAddToCart = () => {
-    if (!configSelected.color || !configSelected.seating) {
-      setErrorMessage("Please select both a color and a seating option");
-      return;
-    }
-    setErrorMessage(null);
-
     addToCart({
       quantity: 1,
       variantId: configId,
@@ -84,57 +61,39 @@ export const SeatingConfigurator = ({
         color: configSelected.color,
         seating: configSelected.seating,
       },
-    })
-      .then(() => {
-        router.push("/cart");
-      })
-      .catch(() => {
-        setErrorMessage("Failed to add item to cart");
-      });
+    });
   };
+
+  if (isLoading) return <Loader>Loading configurations...</Loader>;
+  if (!additionalConfig)
+    return <ErrorMessage>No configuration data available</ErrorMessage>;
 
   return (
     <SeatingWrapper>
-      {isLoading ? (
-        <Loader>Loading configurations...</Loader>
-      ) : additionalConfig ? (
-        <>
-          <ColorSelector
-            selectedColor={configSelected.color}
-            setColor={(color) =>
-              handleConfig({
-                color: color.value,
-              })
-            }
-            colors={colorsData}
-          />
-          <div>
-            <label>Select Seating Option</label>
-            <select
-              value={configSelected.seating?.value || ""}
-              onChange={(e) =>
-                handleConfig({ seating: { value: e.target.value } })
-              }
-            >
-              {additionalConfig.seatingOptions.map((option) => (
-                <div key={option.value}>
-                  <option value={option.value}>{option.title}</option>
-                </div>
-              ))}
-            </select>
-          </div>
-          {errorMessage && <ErrorMessage>{errorMessage}</ErrorMessage>}
-          <AddToCartContainer>
-            <AddToCartButton type="button" onClick={handleAddToCart}>
-              Add to Cart - ${totalPrice}
-            </AddToCartButton>
-          </AddToCartContainer>
-        </>
-      ) : (
-        <ErrorMessage>
-          {errorMessage || "No configuration data available"}
-        </ErrorMessage>
-      )}
+      <ConfigSelector
+        label="Select Color"
+        selectedValue={configSelected.color}
+        onChange={(value) => handleConfig('color', value)}
+        options={colorsData}
+      />
+      <ConfigSelector
+        label="Select Seating Option"
+        selectedValue={configSelected.seating}
+        onChange={(value) => handleConfig('seating', value)}
+        options={additionalConfig.seatingOptions}
+      />
+      {cartError && <ErrorMessage>{cartError}</ErrorMessage>}
+      <AddToCartContainer>
+        <AddToCartButton
+          type="button"
+          onClick={handleAddToCart}
+          disabled={isAddingToCart}
+        >
+          {isAddingToCart
+            ? "Adding to Cart..."
+            : `Add to Cart - $${totalPrice}`}
+        </AddToCartButton>
+      </AddToCartContainer>
     </SeatingWrapper>
   );
 };
